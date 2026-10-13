@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="112" fill="#174ea6"/>
+  <rect x="64" y="64" width="384" height="384" rx="88" fill="#ffffff"/>
+  <!-- Tiffin Box Lid / Bowl Shape -->
+  <path d="M 256 150 C 180 150 144 200 144 250 C 144 274 158 274 168 274 L 172 296 C 176 312 190 326 210 326 L 302 326 C 322 326 336 312 340 296 L 344 274 C 354 274 368 274 368 250 C 368 200 332 150 256 150 Z" fill="#174ea6"/>
+  <!-- Base Stand -->
+  <rect x="170" y="344" width="172" height="12" rx="6" fill="#174ea6"/>
+</svg>
