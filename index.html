@@ -8,13 +8,13 @@
   <title>TiffinMate</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Inter Font -->
+  <!-- Plus Jakarta Sans Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
 
-  <!-- Tailwind CSS Play CDN -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -42,8 +42,10 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <style>
-    /* Mobile app tap & scroll tweaks */
     * {
       -webkit-tap-highlight-color: transparent;
     }
@@ -64,6 +66,13 @@
 <body
   class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans min-h-full antialiased pb-28 selection:bg-brand-500 selection:text-white">
 
+  <!-- Top Floating Toast Notification (HUD Capsule Style) -->
+  <div id="appToast"
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-2rem)] max-w-sm transform -translate-y-16 opacity-0 transition-all duration-300 pointer-events-none flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-semibold backdrop-blur-md bg-slate-900/95 text-white border-slate-700/60 shadow-slate-950/20">
+    <div id="toastIcon" class="flex-shrink-0"></div>
+    <div id="toastMsg" class="flex-1 truncate"></div>
+  </div>
+
   <!-- Top App Bar -->
   <header
     class="sticky top-0 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors">
@@ -78,7 +87,11 @@
             class="text-base font-extrabold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 leading-none">
             TiffinMate
           </h1>
-          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Smart Group Meals</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1 flex items-center gap-1.5"
+            id="syncStatusWrapper">
+            <span id="syncIndicator" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span id="syncLabel">Cloud Connected</span>
+          </p>
         </div>
       </div>
 
@@ -92,12 +105,12 @@
     </div>
   </header>
 
-  <!-- PWA Update Alert -->
+  <!-- PWA Update Banner -->
   <div class="max-w-xl mx-auto px-4 pt-3">
     <div id="updateBanner"
       class="hidden p-3 rounded-2xl bg-brand-50 dark:bg-brand-950/50 border border-brand-200 dark:border-brand-900 flex items-center justify-between text-brand-700 dark:text-brand-300">
       <span class="text-xs font-semibold flex items-center gap-2">
-        <i data-lucide="sparkles" class="w-4 h-4"></i> New app version available
+        <i data-lucide="sparkles" class="w-4 h-4"></i> New update ready
       </span>
       <button id="reloadApp"
         class="px-3 py-1 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold transition">
@@ -109,11 +122,10 @@
   <!-- Main View Container -->
   <main class="max-w-xl mx-auto px-4 py-4 space-y-4">
 
-    <!-- TAB 1: LOG MEAL & DAILY ENTRIES -->
+    <!-- TAB 1: LOG MEALS -->
     <section id="dailyView" class="view space-y-4">
-      <!-- Entry Card -->
       <div
-        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition">
+        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 transition">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 id="tFormTitle" class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Record Meals
@@ -125,9 +137,7 @@
           </span>
         </div>
 
-        <!-- Form fields -->
         <div class="space-y-4">
-          <!-- Date and Quick Pickers -->
           <div>
             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Date</label>
             <input id="tDate" type="date"
@@ -143,7 +153,6 @@
             </div>
           </div>
 
-          <!-- Meal Type & Price -->
           <div class="grid grid-cols-2 gap-3">
             <div>
               <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">Meal Session</label>
@@ -161,7 +170,6 @@
             </div>
           </div>
 
-          <!-- Member Picker -->
           <div>
             <div class="flex items-center justify-between mb-2">
               <label class="text-xs font-semibold text-slate-600 dark:text-slate-300">Select Members</label>
@@ -176,7 +184,6 @@
             <div id="memberPicker" class="grid grid-cols-2 gap-2"></div>
           </div>
 
-          <!-- Save CTA -->
           <button id="saveTiffin"
             class="w-full h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition">
             <i data-lucide="check" class="w-4 h-4"></i> Save Record
@@ -185,13 +192,12 @@
             class="hidden w-full h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs transition">
             Cancel Editing
           </button>
-          <p id="tMsg" class="text-xs text-center font-semibold text-emerald-600 dark:text-emerald-400"></p>
         </div>
       </div>
 
-      <!-- Day Overview Card -->
+      <!-- Day's Logs -->
       <div
-        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition">
+        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 transition">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-slate-900 dark:text-white">Day's Summary</h3>
@@ -206,31 +212,39 @@
       </div>
     </section>
 
-    <!-- TAB 2: MONTHLY SUMMARY -->
+    <!-- TAB 2: MONTHLY SUMMARY & PAYMENTS -->
     <section id="summaryView" class="view hidden space-y-4">
       <div
-        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition">
+        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 transition">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-lg font-bold text-slate-900 dark:text-white">Monthly Statement</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Calculate split & share dues</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Track bills, payments & dues</p>
           </div>
           <input id="monthPicker" type="month"
             class="h-9 px-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium outline-none">
         </div>
 
+        <!-- 3 Big Metric Stats: Total Bill, Total Paid, Balance Due -->
         <div id="sumStats" class="grid grid-cols-3 gap-2 mb-4"></div>
 
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Member Breakdown</h3>
+        <div class="flex items-center justify-between mt-6 mb-2">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Member Breakdown & Dues</h3>
+          <button id="openPaymentModalBtn"
+            class="px-2.5 py-1 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-bold text-xs flex items-center gap-1 transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add Payment
+          </button>
+        </div>
+
         <div class="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
           <table class="w-full text-left text-xs">
             <thead
               class="bg-slate-50 dark:bg-slate-800/50 text-slate-500 uppercase border-b border-slate-200 dark:border-slate-800 font-bold">
               <tr>
                 <th class="p-3">Member</th>
-                <th class="p-3 text-right">Lunch</th>
-                <th class="p-3 text-right">Dinner</th>
-                <th class="p-3 text-right">Total</th>
+                <th class="p-3 text-right">Bill</th>
+                <th class="p-3 text-right">Paid</th>
+                <th class="p-3 text-right">Balance Due</th>
                 <th class="p-3 text-center">Action</th>
               </tr>
             </thead>
@@ -238,22 +252,28 @@
           </table>
         </div>
 
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mt-6 mb-2">Detailed Month Entries</h3>
-        <div id="monthList" class="space-y-2 max-h-96 overflow-y-auto pr-1"></div>
+        <!-- Payments Received List -->
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mt-6 mb-2">Payments Received This Month
+        </h3>
+        <div id="paymentList" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+
+        <!-- Detailed Month Entries -->
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mt-6 mb-2">Meals Logged This Month</h3>
+        <div id="monthList" class="space-y-2 max-h-64 overflow-y-auto pr-1"></div>
       </div>
     </section>
 
     <!-- TAB 3: MEMBERS -->
     <section id="membersView" class="view hidden space-y-4">
       <div
-        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition">
+        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 transition">
         <h2 id="mFormTitle" class="text-lg font-bold text-slate-900 dark:text-white">Add Member</h2>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Add individuals who share the meals</p>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">Manage group members sharing meals</p>
 
         <div class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Full Name *</label>
-            <input id="mName" maxlength="60" placeholder="e.g. Chirag"
+            <input id="mName" maxlength="60" placeholder="e.g. Rahul"
               class="w-full h-11 px-3.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-500 transition">
           </div>
           <div>
@@ -268,19 +288,18 @@
           </div>
 
           <button id="saveMember"
-            class="w-full h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-bold text-sm transition">
+            class="w-full h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition">
             Save Member
           </button>
           <button id="cancelMember"
             class="hidden w-full h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold text-xs transition">
             Cancel
           </button>
-          <p id="mMsg" class="text-xs text-center font-semibold text-emerald-600 dark:text-emerald-400"></p>
         </div>
       </div>
 
       <div
-        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition">
+        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 transition">
         <h3 class="text-base font-bold text-slate-900 dark:text-white mb-3">Group Members</h3>
         <div id="memberList" class="space-y-2"></div>
       </div>
@@ -289,10 +308,10 @@
     <!-- TAB 4: SETTINGS / BACKUP -->
     <section id="backupView" class="view hidden space-y-4">
       <div
-        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm transition space-y-5">
+        class="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200/80 dark:border-slate-800 transition space-y-5">
         <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Export & Backup</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Download copies of your data</p>
+          <h2 class="text-lg font-bold text-slate-900 dark:text-white">Cloud Sync & Export</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Download files or refresh cloud state</p>
           <div class="grid grid-cols-2 gap-2 mt-3">
             <button id="exportJson"
               class="h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition">
@@ -306,32 +325,70 @@
         </div>
 
         <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
-          <h2 class="text-base font-bold text-slate-900 dark:text-white">Restore Data</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Import a JSON backup to overwrite or recover</p>
+          <h2 class="text-base font-bold text-slate-900 dark:text-white">Batch Upload from JSON</h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-2">Import an existing JSON backup straight into
+            Supabase</p>
           <input id="importFile" type="file" accept=".json,application/json"
             class="w-full text-xs text-slate-500 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 dark:file:bg-slate-800 file:text-slate-700 dark:file:text-slate-300">
           <button id="importJson"
-            class="w-full mt-3 h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-bold text-sm transition">
-            Restore Backup
-          </button>
-          <p id="bMsg" class="text-xs text-slate-500 mt-2 font-medium"></p>
-        </div>
-
-        <div class="pt-4 border-t border-slate-100 dark:border-slate-800">
-          <h2 class="text-base font-bold text-rose-600">Danger Zone</h2>
-          <p class="text-xs text-slate-500 mb-2">Erase all records and members from this browser</p>
-          <button id="clearAll"
-            class="w-full h-10 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 hover:bg-rose-100 font-semibold text-xs transition">
-            Delete All Local Data
+            class="w-full mt-3 h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition">
+            Upload to Supabase
           </button>
         </div>
       </div>
     </section>
   </main>
 
+  <!-- RECORD PAYMENT MODAL DIALOG -->
+  <div id="paymentModal"
+    class="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div
+      class="bg-white dark:bg-slate-900 w-full max-w-sm rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white">Record Payment</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Log money received from a member</p>
+        </div>
+        <button id="closePaymentModalBtn"
+          class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Member *</label>
+          <select id="pMember"
+            class="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none focus:border-brand-500 transition"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Payment Date</label>
+          <input id="pDate" type="date"
+            class="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none focus:border-brand-500 transition">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Amount Received (₹)
+            *</label>
+          <input id="pAmount" type="number" min="1" step=".01" placeholder="e.g. 1500"
+            class="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-semibold outline-none focus:border-brand-500 transition">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Note (Optional)</label>
+          <input id="pNote" maxlength="80" placeholder="e.g. GPay, Cash, Part payment"
+            class="w-full h-11 px-3 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:border-brand-500 transition">
+        </div>
+
+        <button id="savePayment"
+          class="w-full h-11 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-[0.99] text-white font-bold text-sm flex items-center justify-center gap-2 transition">
+          <i data-lucide="check" class="w-4 h-4"></i> Save Payment
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Mobile Bottom Tab Navigation -->
   <nav
-    class="fixed bottom-0 inset-x-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 z-50 transition">
+    class="fixed bottom-0 inset-x-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200/80 dark:border-slate-800 z-40 transition">
     <div class="max-w-xl mx-auto grid grid-cols-4 h-16 px-2">
       <button
         class="nav-btn active flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition"
@@ -363,10 +420,23 @@
   <script>
       (() => {
         'use strict';
-        const DB = 'TiffinTrackerBlueDB', VERSION = 1;
-        let db, members = [], tiffins = [], editT = null, editM = null, waitingWorker = null;
 
-        // Theme Initializer
+        // ==========================================
+        // 1. SUPABASE CLIENT SETUP
+        // ==========================================
+        const SUPABASE_URL = 'https://ofaefzuxebcizhihlkgr.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9mYWVmenV4ZWJjaXpoaWhsa2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5MTczNTAsImV4cCI6MjEwNzQ5MzM1MH0.0_O1w_C2CSi951i9Mz_VgoA89tQl9Z98yOAUtoCarBU';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let members = [];
+        let tiffins = [];
+        let payments = [];
+        let editT = null;
+        let editM = null;
+        let waitingWorker = null;
+        let isInitialLoad = true;
+
+        // Theme Controller
         function initTheme() {
           const isDark = localStorage.getItem('theme') === 'dark' ||
             (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -378,6 +448,86 @@
         };
         initTheme();
 
+        // Top Capsule Toast Controller
+        function showToast(message, type = 'success') {
+          const toast = document.getElementById('appToast');
+          const msgEl = document.getElementById('toastMsg');
+          const iconEl = document.getElementById('toastIcon');
+
+          msgEl.textContent = message;
+
+          if (type === 'error') {
+            iconEl.innerHTML = `
+            <div class="w-6 h-6 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center">
+              <i data-lucide="alert-circle" class="w-4 h-4"></i>
+            </div>`;
+          } else {
+            iconEl.innerHTML = `
+            <div class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+              <i data-lucide="check" class="w-4 h-4"></i>
+            </div>`;
+          }
+
+          lucide.createIcons();
+
+          toast.classList.remove('-translate-y-16', 'opacity-0', 'pointer-events-none');
+          toast.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+
+          clearTimeout(toast._timer);
+          toast._timer = setTimeout(() => {
+            toast.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+            toast.classList.add('-translate-y-16', 'opacity-0', 'pointer-events-none');
+          }, 3000);
+        }
+
+        // Button Busy State Handler
+        function setButtonBusy(btn, isBusy, busyText = 'Saving...') {
+          if (!btn) return;
+          if (isBusy) {
+            btn.dataset.origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.classList.add('opacity-75', 'cursor-not-allowed');
+            btn.innerHTML = `
+            <svg class="animate-spin w-4 h-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>${busyText}</span>
+          `;
+          } else {
+            btn.disabled = false;
+            btn.classList.remove('opacity-75', 'cursor-not-allowed');
+            if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+            lucide.createIcons();
+          }
+        }
+
+        // Smooth Sync Status Indicator
+        function setSyncStatus(status) {
+          const wrapper = document.getElementById('syncStatusWrapper');
+          if (!wrapper) return;
+
+          if (status === 'syncing') {
+            wrapper.innerHTML = `
+            <svg class="animate-spin w-3 h-3 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span class="text-brand-600 dark:text-brand-400 font-semibold">Syncing...</span>
+          `;
+          } else if (status === 'error') {
+            wrapper.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span class="text-rose-500 font-semibold">Sync Error</span>
+          `;
+          } else {
+            wrapper.innerHTML = `
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Cloud Connected</span>
+          `;
+          }
+        }
+
         // Date Formatters
         const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const now = new Date();
@@ -386,52 +536,122 @@
 
         const money = n => '₹' + Number(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const uid = () => crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2);
-
-        // IndexedDB Methods
-        function openDB() {
-          return new Promise((res, rej) => {
-            const r = indexedDB.open(DB, VERSION);
-            r.onupgradeneeded = () => {
-              if (!r.result.objectStoreNames.contains('state')) r.result.createObjectStore('state', { keyPath: 'id' });
-            };
-            r.onsuccess = () => { db = r.result; res(); };
-            r.onerror = () => rej(r.error);
-          });
-        }
-        function get(k) {
-          return new Promise((res, rej) => {
-            const r = db.transaction('state').objectStore('state').get(k);
-            r.onsuccess = () => res(r.result?.value);
-            r.onerror = () => rej(r.error);
-          });
-        }
-        function put(k, v) {
-          return new Promise((res, rej) => {
-            const tx = db.transaction('state', 'readwrite');
-            tx.objectStore('state').put({ id: k, value: v });
-            tx.oncomplete = res;
-            tx.onerror = () => rej(tx.error);
-          });
-        }
-        async function persist() { await Promise.all([put('members', members), put('tiffins', tiffins)]); }
-
-        const member = id => members.find(m => m.id === id);
+        const member = id => members.find(m => String(m.id) === String(id));
         function picked() { return [...document.querySelectorAll('[name=memberPick]:checked')].map(x => x.value); }
 
+        // ==========================================
+        // 2. DECOUPLED & FAULT-TOLERANT SUPABASE FETCH
+        // ==========================================
+        async function loadData() {
+          setSyncStatus('syncing');
+          let fetchErrors = [];
+
+          // 1. Fetch Members
+          try {
+            const { data: memData, error: memErr } = await supabase.from('members').select('*');
+            if (memErr) throw memErr;
+            if (memData) {
+              members = memData.map(m => ({
+                id: String(m.id ?? ''),
+                name: String(m.name ?? 'Unnamed'),
+                email: String(m.email ?? ''),
+                mobile: String(m.mobile ?? m.phone ?? ''),
+                isActive: m.is_active !== undefined ? Boolean(m.is_active) : (m.isActive !== undefined ? Boolean(m.isActive) : true)
+              })).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            }
+          } catch (err) {
+            console.warn('Members fetch issue:', err);
+            fetchErrors.push(err.message);
+          }
+
+          // 2. Fetch Tiffins
+          try {
+            const { data: tifData, error: tifErr } = await supabase.from('tiffins').select('*');
+            if (tifErr) throw tifErr;
+            if (tifData) {
+              tiffins = tifData.map(t => ({
+                id: String(t.id ?? ''),
+                date: String(t.date ?? today),
+                meal: String(t.meal ?? 'Lunch'),
+                price: Number(t.price ?? 0),
+                memberId: String(t.member_id ?? t.memberId ?? ''),
+                createdAt: t.created_at ?? t.createdAt ?? new Date().toISOString()
+              })).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            }
+          } catch (err) {
+            console.warn('Tiffins fetch issue:', err);
+            fetchErrors.push(err.message);
+          }
+
+          // 3. Fetch Payments
+          try {
+            const { data: payData, error: payErr } = await supabase.from('payments').select('*');
+            if (payErr) throw payErr;
+            if (payData) {
+              payments = payData.map(p => ({
+                id: String(p.id ?? ''),
+                date: String(p.date ?? today),
+                memberId: String(p.member_id ?? p.memberId ?? ''),
+                amount: Number(p.amount ?? 0),
+                note: String(p.note ?? ''),
+                createdAt: p.created_at ?? p.createdAt ?? new Date().toISOString()
+              })).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+            }
+          } catch (err) {
+            console.warn('Payments fetch issue:', err);
+            fetchErrors.push(err.message);
+          }
+
+          isInitialLoad = false;
+          renderAll();
+
+          if (fetchErrors.length > 0) {
+            setSyncStatus('error');
+            if (fetchErrors.some(e => e.includes('permission') || e.includes('policy'))) {
+              showToast('Database permission issue. Check Supabase RLS policies.', 'error');
+            }
+          } else {
+            setSyncStatus('synced');
+          }
+        }
+
+        // Realtime listener
+        function setupRealtime() {
+          try {
+            supabase.channel('public_db_changes')
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, () => loadData())
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'tiffins' }, () => loadData())
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => loadData())
+              .subscribe();
+          } catch (e) {
+            console.warn('Realtime subscription skipped:', e);
+          }
+        }
+
+        // ==========================================
+        // 3. UI RENDERING
+        // ==========================================
         function renderPicker(selectedIds = []) {
           const active = members.filter(m => m.isActive !== false);
           const container = document.getElementById('memberPicker');
           if (!active.length) {
-            container.innerHTML = `<div class="col-span-2 p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">Add members first in the Members tab.</div>`;
+            container.innerHTML = `<div class="col-span-2 p-3 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">No active members found. Add one in Members tab.</div>`;
             return;
           }
           container.innerHTML = active.map(m => `
-      <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer select-none transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/60 dark:has-[:checked]:bg-brand-950/30 has-[:checked]:text-brand-600 dark:has-[:checked]:text-brand-400">
-        <input type="checkbox" name="memberPick" value="${esc(m.id)}" ${selectedIds.includes(m.id) ? 'checked' : ''} class="w-4 h-4 rounded text-brand-600 accent-brand-500">
-        <span class="text-xs font-semibold truncate">${esc(m.name)}</span>
-      </label>
-    `).join('');
+          <label class="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer select-none transition has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50/60 dark:has-[:checked]:bg-brand-950/30 has-[:checked]:text-brand-600 dark:has-[:checked]:text-brand-400">
+            <input type="checkbox" name="memberPick" value="${esc(m.id)}" ${selectedIds.includes(String(m.id)) ? 'checked' : ''} class="w-4 h-4 rounded text-brand-600 accent-brand-500">
+            <span class="text-xs font-semibold truncate">${esc(m.name)}</span>
+          </label>
+        `).join('');
+        }
+
+        function renderPaymentMemberOptions(selectedId = '') {
+          const select = document.getElementById('pMember');
+          const active = members.filter(m => m.isActive !== false);
+          select.innerHTML = active.length
+            ? active.map(m => `<option value="${esc(m.id)}" ${String(m.id) === String(selectedId) ? 'selected' : ''}>${esc(m.name)}</option>`).join('')
+            : '<option value="">No members</option>';
         }
 
         function resetT() {
@@ -440,7 +660,6 @@
           document.getElementById('saveTiffin').innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Record';
           document.getElementById('cancelTiffin').classList.add('hidden');
           document.getElementById('tPrice').value = '70';
-          document.getElementById('tMsg').textContent = '';
           renderPicker();
           lucide.createIcons();
         }
@@ -448,7 +667,7 @@
         function resetM() {
           editM = null;
           document.getElementById('mFormTitle').textContent = 'Add Member';
-          document.getElementById('saveMember').textContent = 'Save Member';
+          document.getElementById('saveMember').innerHTML = 'Save Member';
           document.getElementById('cancelMember').classList.add('hidden');
           ['mName', 'mEmail', 'mMobile'].forEach(id => document.getElementById(id).value = '');
         }
@@ -463,32 +682,32 @@
             ['Lunch', rows.filter(t => t.meal === 'Lunch').length],
             ['Cost', money(total)]
           ].map(([a, b]) => `
-      <div class="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${a}</div>
-        <div class="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 truncate">${b}</div>
-      </div>
-    `).join('');
+          <div class="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${a}</div>
+            <div class="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 truncate">${b}</div>
+          </div>
+        `).join('');
 
           document.getElementById('dailyList').innerHTML = rows.length ? rows.map(t => `
-      <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-        <div class="flex items-center gap-2.5 min-w-0">
-          <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${t.meal === 'Lunch' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300'}">${esc(t.meal)}</span>
-          <span class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">${esc(member(t.memberId)?.name || t.memberName || 'Deleted')}</span>
-          <span class="text-xs text-slate-400 font-medium">${money(t.price)}</span>
-        </div>
-        <div class="flex items-center gap-1">
-          <button data-edit-t="${esc(t.id)}" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
-            <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-          </button>
-          <button data-del-t="${esc(t.id)}" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 transition">
-            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-          </button>
-        </div>
-      </div>
-    `).join('') : '<div class="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">No meals recorded for this date.</div>';
+          <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${t.meal === 'Lunch' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' : 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300'}">${esc(t.meal)}</span>
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">${esc(member(t.memberId)?.name || 'Deleted Member')}</span>
+              <span class="text-xs text-slate-400 font-medium">${money(t.price)}</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <button data-edit-t="${esc(t.id)}" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition" title="Edit">
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+              <button data-del-t="${esc(t.id)}" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 transition" title="Delete">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        `).join('') : '<div class="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">No meals recorded for this date.</div>';
 
           document.querySelectorAll('[data-edit-t]').forEach(b => b.onclick = () => {
-            const t = tiffins.find(x => x.id === b.dataset.editT);
+            const t = tiffins.find(x => String(x.id) === String(b.dataset.editT));
             if (!t) return;
             editT = t.id;
             document.getElementById('tDate').value = t.date;
@@ -498,16 +717,26 @@
             document.getElementById('tFormTitle').textContent = 'Edit Meal Record';
             document.getElementById('saveTiffin').textContent = 'Update Record';
             document.getElementById('cancelTiffin').classList.remove('hidden');
-            renderPicker([t.memberId]);
+            renderPicker([String(t.memberId)]);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           });
 
           document.querySelectorAll('[data-del-t]').forEach(b => b.onclick = async () => {
-            const t = tiffins.find(x => x.id === b.dataset.delT);
-            if (t && confirm(`Remove ${t.meal} for ${member(t.memberId)?.name || t.memberName}?`)) {
-              tiffins = tiffins.filter(x => x.id !== t.id);
-              await persist();
-              renderAll();
+            const t = tiffins.find(x => String(x.id) === String(b.dataset.delT));
+            if (t && confirm(`Remove ${t.meal} for ${member(t.memberId)?.name || 'this member'}?`)) {
+              setSyncStatus('syncing');
+              tiffins = tiffins.filter(x => String(x.id) !== String(t.id));
+              renderDaily();
+              renderSummary();
+
+              const { error } = await supabase.from('tiffins').delete().eq('id', t.id);
+              if (error) {
+                showToast(error.message, 'error');
+                await loadData();
+              } else {
+                showToast('Record removed');
+                setSyncStatus('synced');
+              }
             }
           });
 
@@ -516,30 +745,30 @@
 
         function renderMembers() {
           document.getElementById('memberList').innerHTML = members.length ? members.map(m => {
-            const count = tiffins.filter(t => t.memberId === m.id).length;
+            const count = tiffins.filter(t => String(t.memberId) === String(m.id)).length;
             const isArchived = m.isActive === false;
             return `
-        <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
-          <div class="min-w-0">
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs font-bold text-slate-900 dark:text-white truncate">${esc(m.name)}</span>
-              ${isArchived ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-500">Archived</span>' : ''}
+            <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800">
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-bold text-slate-900 dark:text-white truncate">${esc(m.name)}</span>
+                  ${isArchived ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-500">Archived</span>' : ''}
+                </div>
+                <p class="text-[11px] text-slate-400 mt-0.5 truncate">${m.mobile ? esc(m.mobile) : 'No Phone'} · ${count} tiffin(s)</p>
+              </div>
+              <div class="flex items-center gap-1">
+                <button data-edit-m="${esc(m.id)}" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition" title="Edit">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                </button>
+                <button data-toggle-m="${esc(m.id)}" class="px-2 py-1 rounded-lg text-[10px] font-bold ${isArchived ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'} transition">
+                  ${isArchived ? 'Activate' : 'Archive'}
+                </button>
+                <button data-del-m="${esc(m.id)}" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 transition" title="Delete">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
             </div>
-            <p class="text-[11px] text-slate-400 mt-0.5 truncate">${m.mobile || 'No Phone'} · ${count} tiffin(s)</p>
-          </div>
-          <div class="flex items-center gap-1">
-            <button data-edit-m="${esc(m.id)}" class="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
-              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-            </button>
-            <button data-toggle-m="${esc(m.id)}" class="px-2 py-1 rounded-lg text-[10px] font-bold ${isArchived ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'} transition">
-              ${isArchived ? 'Activate' : 'Archive'}
-            </button>
-            <button data-del-m="${esc(m.id)}" class="p-1.5 rounded-lg text-rose-400 hover:text-rose-600 transition">
-              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-            </button>
-          </div>
-        </div>
-      `;
+          `;
           }).join('') : '<div class="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">No members added yet.</div>';
 
           document.querySelectorAll('[data-edit-m]').forEach(b => b.onclick = () => {
@@ -558,20 +787,38 @@
           document.querySelectorAll('[data-toggle-m]').forEach(b => b.onclick = async () => {
             const m = member(b.dataset.toggleM);
             if (!m) return;
-            m.isActive = m.isActive === false;
-            await persist();
-            renderAll();
+            const nextState = m.isActive === false;
+            m.isActive = nextState;
+            renderMembers();
+            renderPicker();
+
+            const { error } = await supabase.from('members').update({ is_active: nextState }).eq('id', m.id);
+            if (error) {
+              showToast(error.message, 'error');
+              await loadData();
+            } else {
+              showToast(nextState ? 'Member activated' : 'Member archived');
+            }
           });
 
           document.querySelectorAll('[data-del-m]').forEach(b => b.onclick = async () => {
             const m = member(b.dataset.delM);
             if (!m) return;
-            const count = tiffins.filter(t => t.memberId === m.id).length;
+            const count = tiffins.filter(t => String(t.memberId) === String(m.id)).length;
             if (!confirm(`Delete ${m.name} permanently? (${count} meals recorded. Consider 'Archive' instead).`)) return;
-            members = members.filter(x => x.id !== m.id);
-            tiffins = tiffins.filter(t => t.memberId !== m.id);
-            await persist();
+
+            members = members.filter(x => String(x.id) !== String(m.id));
+            tiffins = tiffins.filter(t => String(t.memberId) !== String(m.id));
+            payments = payments.filter(p => String(p.memberId) !== String(m.id));
             renderAll();
+
+            const { error } = await supabase.from('members').delete().eq('id', m.id);
+            if (error) {
+              showToast(error.message, 'error');
+              await loadData();
+            } else {
+              showToast('Member deleted');
+            }
           });
 
           lucide.createIcons();
@@ -580,68 +827,146 @@
         function renderSummary() {
           const month = document.getElementById('monthPicker').value || thisMonth;
           const list = tiffins.filter(t => t.date.startsWith(month));
-          const l = list.filter(t => t.meal === 'Lunch');
-          const total = list.reduce((s, t) => s + Number(t.price), 0);
+          const monthPayments = payments.filter(p => p.date.startsWith(month));
+
+          const totalCost = list.reduce((s, t) => s + Number(t.price), 0);
+          const totalPaid = monthPayments.reduce((s, p) => s + Number(p.amount), 0);
+          const totalPending = totalCost - totalPaid;
 
           document.getElementById('sumStats').innerHTML = [
-            ['Meals', list.length],
-            ['Lunch Cost', money(l.reduce((s, t) => s + Number(t.price), 0))],
-            ['Total Dues', money(total)]
+            ['Total Bill', money(totalCost)],
+            ['Received', money(totalPaid)],
+            ['Pending Dues', money(totalPending > 0 ? totalPending : 0)]
           ].map(([a, b]) => `
-      <div class="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
-        <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${a}</div>
-        <div class="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 truncate">${b}</div>
-      </div>
-    `).join('');
+          <div class="p-2.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-center">
+            <div class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${a}</div>
+            <div class="text-sm font-extrabold text-slate-900 dark:text-white mt-0.5 truncate">${b}</div>
+          </div>
+        `).join('');
 
+          // Member Summary Table with Due Balance
           document.getElementById('sumTable').innerHTML = members.map(m => {
-            const own = list.filter(t => t.memberId === m.id);
-            const ml = own.filter(t => t.meal === 'Lunch');
-            const md = own.filter(t => t.meal === 'Dinner');
-            const totalCost = own.reduce((s, t) => s + Number(t.price), 0);
+            const ownTiffins = list.filter(t => String(t.memberId) === String(m.id));
+            const ownPayments = monthPayments.filter(p => String(p.memberId) === String(m.id));
+
+            const memberBill = ownTiffins.reduce((s, t) => s + Number(t.price), 0);
+            const memberPaid = ownPayments.reduce((s, p) => s + Number(p.amount), 0);
+            const balance = memberBill - memberPaid;
+
+            let balanceBadge = `<span class="font-bold text-slate-400">₹0.00</span>`;
+            if (balance > 0) {
+              balanceBadge = `<span class="font-bold text-rose-500">${money(balance)}</span>`;
+            } else if (balance < 0) {
+              balanceBadge = `<span class="font-bold text-blue-500">${money(Math.abs(balance))} adv</span>`;
+            } else if (memberBill > 0 && balance === 0) {
+              balanceBadge = `<span class="font-bold text-emerald-500">Settled ✓</span>`;
+            }
 
             return `
-        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
-          <td class="p-3 font-semibold text-slate-900 dark:text-white">
-            ${esc(m.name)}
-            ${m.isActive === false ? '<span class="text-[9px] text-slate-400 block font-normal">(Archived)</span>' : ''}
-          </td>
-          <td class="p-3 text-right text-slate-600 dark:text-slate-300">${ml.length}</td>
-          <td class="p-3 text-right text-slate-600 dark:text-slate-300">${md.length}</td>
-          <td class="p-3 text-right font-bold text-brand-600 dark:text-brand-400">${money(totalCost)}</td>
-          <td class="p-3 text-center">
-            <button data-share-wa="${esc(m.id)}" data-month="${esc(month)}" class="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] inline-flex items-center gap-1 transition ${own.length === 0 ? 'opacity-40 pointer-events-none' : ''}">
-              <i data-lucide="share-2" class="w-3 h-3"></i> WhatsApp
-            </button>
-          </td>
-        </tr>
-      `;
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition">
+              <td class="p-3 font-semibold text-slate-900 dark:text-white">
+                ${esc(m.name)}
+                ${m.isActive === false ? '<span class="text-[9px] text-slate-400 block font-normal">(Archived)</span>' : ''}
+              </td>
+              <td class="p-3 text-right font-medium text-slate-600 dark:text-slate-300">${money(memberBill)}</td>
+              <td class="p-3 text-right font-medium text-emerald-600 dark:text-emerald-400">${money(memberPaid)}</td>
+              <td class="p-3 text-right font-medium">${balanceBadge}</td>
+              <td class="p-3 text-center">
+                <div class="flex items-center justify-center gap-1">
+                  <button data-quick-pay="${esc(m.id)}" class="px-2 py-1 rounded-lg bg-brand-50 hover:bg-brand-100 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 font-bold text-[10px] transition" title="Log Payment">
+                    + Pay
+                  </button>
+                  <button data-share-wa="${esc(m.id)}" data-month="${esc(month)}" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 font-bold text-[10px] inline-flex items-center gap-0.5 transition ${ownTiffins.length === 0 && ownPayments.length === 0 ? 'opacity-40 pointer-events-none' : ''}">
+                    <i data-lucide="share-2" class="w-3 h-3"></i> Share
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
           }).join('') || '<tr><td colspan="5" class="p-6 text-center text-slate-400 text-xs">No active members.</td></tr>';
 
+          // WhatsApp Bill Sharing Handler
           document.querySelectorAll('[data-share-wa]').forEach(btn => btn.onclick = () => {
             const m = member(btn.dataset.shareWa);
             if (!m) return;
             const targetMonth = btn.dataset.month;
-            const own = tiffins.filter(t => t.memberId === m.id && t.date.startsWith(targetMonth));
-            const ml = own.filter(t => t.meal === 'Lunch');
-            const md = own.filter(t => t.meal === 'Dinner');
-            const totalCost = own.reduce((s, t) => s + Number(t.price), 0);
+            const ownT = tiffins.filter(t => String(t.memberId) === String(m.id) && t.date.startsWith(targetMonth));
+            const ownP = payments.filter(p => String(p.memberId) === String(m.id) && p.date.startsWith(targetMonth));
 
-            const msg = `*Tiffin Breakdown (${targetMonth})*\nHi ${m.name},\n- Lunch: ${ml.length} (${money(ml.reduce((s, t) => s + Number(t.price), 0))})\n- Dinner: ${md.length} (${money(md.reduce((s, t) => s + Number(t.price), 0))})\n*Total Amount: ${money(totalCost)}*`;
+            const ml = ownT.filter(t => t.meal === 'Lunch');
+            const md = ownT.filter(t => t.meal === 'Dinner');
+            const bill = ownT.reduce((s, t) => s + Number(t.price), 0);
+            const paid = ownP.reduce((s, p) => s + Number(p.amount), 0);
+            const balance = bill - paid;
+
+            const msg =
+              `*Tiffin Statement (${targetMonth})*
+Hi ${m.name},
+- Total Meals: ${ownT.length} (${money(bill)})
+  • Lunch: ${ml.length} | Dinner: ${md.length}
+- Payments Received: ${money(paid)}
+*Net Balance Due: ${money(balance)}*
+${balance <= 0 ? '(All settled, thank you!)' : 'Please clear the dues when convenient.'}`;
+
             const clean = (m.mobile || '').replace(/[^0-9]/g, '');
             window.open(clean ? `https://wa.me/${clean}?text=${encodeURIComponent(msg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
           });
 
-          const sorted = [...list].sort((a, b) => b.date.localeCompare(a.date) || a.meal.localeCompare(b.meal));
-          document.getElementById('monthList').innerHTML = sorted.length ? sorted.map(t => `
-      <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs">
-        <div class="flex items-center gap-2">
-          <span class="font-bold text-slate-800 dark:text-slate-100">${esc(member(t.memberId)?.name || t.memberName)}</span>
-          <span class="text-slate-400 text-[11px]">${esc(t.date)} · ${esc(t.meal)}</span>
-        </div>
-        <span class="font-bold text-slate-700 dark:text-slate-300">${money(t.price)}</span>
-      </div>
-    `).join('') : '<div class="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">No meals logged for this month.</div>';
+          // Quick Pay Button in Row
+          document.querySelectorAll('[data-quick-pay]').forEach(btn => btn.onclick = () => {
+            openPaymentModal(btn.dataset.quickPay);
+          });
+
+          // Payments Received List
+          document.getElementById('paymentList').innerHTML = monthPayments.length ? monthPayments.map(p => `
+          <div class="flex items-center justify-between p-3 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="p-1 rounded-md bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-300">
+                <i data-lucide="arrow-down-left" class="w-3.5 h-3.5"></i>
+              </span>
+              <div>
+                <span class="font-bold text-slate-800 dark:text-slate-100">${esc(member(p.memberId)?.name || 'Deleted')}</span>
+                <span class="text-slate-400 text-[11px] block">${esc(p.date)}${p.note ? ' · ' + esc(p.note) : ''}</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-emerald-600 dark:text-emerald-400">${money(p.amount)}</span>
+              <button data-del-p="${esc(p.id)}" class="p-1 text-slate-400 hover:text-rose-500 transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        `).join('') : '<div class="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">No payments recorded for this month.</div>';
+
+          document.querySelectorAll('[data-del-p]').forEach(btn => btn.onclick = async () => {
+            const p = payments.find(x => String(x.id) === String(btn.dataset.delP));
+            if (!p || !confirm(`Delete payment of ${money(p.amount)} from ${member(p.memberId)?.name || 'member'}?`)) return;
+
+            setSyncStatus('syncing');
+            payments = payments.filter(x => String(x.id) !== String(p.id));
+            renderSummary();
+
+            const { error } = await supabase.from('payments').delete().eq('id', p.id);
+            if (error) {
+              showToast(error.message, 'error');
+              await loadData();
+            } else {
+              showToast('Payment removed');
+              setSyncStatus('synced');
+            }
+          });
+
+          // Meals Logged This Month
+          const sortedMeals = [...list].sort((a, b) => b.date.localeCompare(a.date) || a.meal.localeCompare(b.meal));
+          document.getElementById('monthList').innerHTML = sortedMeals.length ? sortedMeals.map(t => `
+          <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-slate-800 dark:text-slate-100">${esc(member(t.memberId)?.name || 'Deleted')}</span>
+              <span class="text-slate-400 text-[11px]">${esc(t.date)} · ${esc(t.meal)}</span>
+            </div>
+            <span class="font-bold text-slate-700 dark:text-slate-300">${money(t.price)}</span>
+          </div>
+        `).join('') : '<div class="p-4 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">No meals logged for this month.</div>';
 
           lucide.createIcons();
         }
@@ -654,7 +979,7 @@
           lucide.createIcons();
         }
 
-        // Navigation controller
+        // Tab Navigation Controller
         function switchTab(viewId) {
           document.querySelectorAll('.view').forEach(v => v.classList.toggle('hidden', v.id !== viewId));
           document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -669,10 +994,12 @@
         }
         document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
 
-        // Quick date pickers
+        // Quick Date Shortcuts
         document.getElementById('tDate').value = today;
         document.getElementById('listDate').value = today;
         document.getElementById('monthPicker').value = thisMonth;
+        document.getElementById('pDate').value = today;
+
         document.getElementById('listDate').onchange = renderDaily;
         document.getElementById('monthPicker').onchange = renderSummary;
 
@@ -685,7 +1012,7 @@
         document.getElementById('dateYest').onclick = () => { document.getElementById('tDate').value = shiftDate(-1); };
         document.getElementById('dateTom').onclick = () => { document.getElementById('tDate').value = shiftDate(1); };
 
-        // Member pickers
+        // Multi-Member Selection
         document.getElementById('selectAllMembers').onclick = () => {
           document.querySelectorAll('[name=memberPick]').forEach(cb => cb.checked = true);
         };
@@ -693,8 +1020,27 @@
           document.querySelectorAll('[name=memberPick]').forEach(cb => cb.checked = false);
         };
 
-        // Add / Edit Meal Record
+        // Payment Modal Triggers
+        function openPaymentModal(preSelectedMemberId = '') {
+          renderPaymentMemberOptions(preSelectedMemberId);
+          document.getElementById('pDate').value = today;
+          document.getElementById('pAmount').value = '';
+          document.getElementById('pNote').value = '';
+          document.getElementById('paymentModal').classList.remove('hidden');
+        }
+        function closePaymentModal() {
+          document.getElementById('paymentModal').classList.add('hidden');
+        }
+        document.getElementById('openPaymentModalBtn').onclick = () => openPaymentModal();
+        document.getElementById('closePaymentModalBtn').onclick = closePaymentModal;
+
+        // ==========================================
+        // 4. WRITE ACTIONS & SUPABASE SYNC
+        // ==========================================
+
+        // Save Meal Record
         document.getElementById('saveTiffin').onclick = async () => {
+          const btn = document.getElementById('saveTiffin');
           const date = document.getElementById('tDate').value;
           const ids = picked();
           const meal = document.getElementById('tMeal').value;
@@ -702,81 +1048,206 @@
           const price = Number(raw);
 
           if (!date || !ids.length || raw === '' || !Number.isFinite(price) || price < 0) {
-            alert('Select date, at least one member, and enter a valid price.');
+            showToast('Pick a date, member, and valid price', 'error');
             return;
           }
           if (editT && ids.length !== 1) {
-            alert('Select exactly one member when updating an entry.');
+            showToast('Select one member when updating', 'error');
             return;
           }
 
-          if (editT) {
-            const t = tiffins.find(x => x.id === editT);
-            const m = member(ids[0]);
-            if (t && m) Object.assign(t, { date, memberId: m.id, memberName: m.name, meal, price });
-          } else {
-            const duplicate = ids.filter(id => tiffins.some(t => t.date === date && t.memberId === id && t.meal === meal));
-            if (duplicate.length && !confirm(`${duplicate.map(id => member(id)?.name).join(', ')} already recorded for ${meal}. Add again?`)) {
-              return;
-            }
-            ids.forEach(id => {
-              const m = member(id);
-              if (m) {
-                tiffins.push({
-                  id: uid(),
-                  date,
-                  memberId: id,
-                  memberName: m.name,
-                  meal,
-                  price,
-                  createdAt: new Date().toISOString()
+          setButtonBusy(btn, true, editT ? 'Updating...' : 'Saving...');
+          setSyncStatus('syncing');
+
+          try {
+            if (editT) {
+              const { error } = await supabase.from('tiffins').update({
+                date,
+                member_id: ids[0],
+                meal,
+                price
+              }).eq('id', editT);
+
+              if (error) throw error;
+
+              const idx = tiffins.findIndex(x => String(x.id) === String(editT));
+              if (idx !== -1) {
+                tiffins[idx] = { ...tiffins[idx], date, memberId: ids[0], meal, price };
+              }
+              showToast('Meal record updated');
+            } else {
+              const duplicate = ids.filter(id => tiffins.some(t => t.date === date && String(t.memberId) === String(id) && t.meal === meal));
+              if (duplicate.length && !confirm(`${duplicate.map(id => member(id)?.name).join(', ')} already recorded for ${meal}. Add again?`)) {
+                setButtonBusy(btn, false);
+                setSyncStatus('synced');
+                return;
+              }
+
+              const payload = ids.map(id => ({
+                date,
+                member_id: id,
+                meal,
+                price
+              }));
+
+              const { data, error } = await supabase.from('tiffins').insert(payload).select();
+              if (error) throw error;
+
+              if (data && data.length) {
+                data.forEach(item => {
+                  tiffins.unshift({
+                    id: String(item.id),
+                    date: item.date,
+                    meal: item.meal,
+                    price: Number(item.price),
+                    memberId: String(item.member_id),
+                    createdAt: item.created_at || new Date().toISOString()
+                  });
                 });
               }
-            });
-          }
+              showToast(`${ids.length} meal(s) saved`);
+            }
 
-          document.getElementById('listDate').value = date;
-          await persist();
-          resetT();
-          renderAll();
-          document.getElementById('tMsg').textContent = 'Saved successfully!';
-          setTimeout(() => { document.getElementById('tMsg').textContent = ''; }, 2500);
+            document.getElementById('listDate').value = date;
+            resetT();
+            renderAll();
+            setSyncStatus('synced');
+          } catch (err) {
+            showToast(err.message, 'error');
+            setSyncStatus('error');
+          } finally {
+            setButtonBusy(btn, false);
+          }
         };
         document.getElementById('cancelTiffin').onclick = resetT;
 
-        // Add / Edit Member
+        // Save Member
         document.getElementById('saveMember').onclick = async () => {
+          const btn = document.getElementById('saveMember');
           const name = document.getElementById('mName').value.trim();
           const email = document.getElementById('mEmail').value.trim();
           const mobile = document.getElementById('mMobile').value.trim();
 
-          if (!name) { alert('Enter member name.'); return; }
-          if (members.some(m => m.name.toLowerCase() === name.toLowerCase() && m.id !== editM)) {
-            alert('Member with this name already exists.');
+          if (!name) {
+            showToast('Please enter member name', 'error');
             return;
           }
 
-          if (editM) {
-            const m = member(editM);
-            if (m) {
-              Object.assign(m, { name, email, mobile });
-              tiffins.forEach(t => { if (t.memberId === m.id) t.memberName = name; });
-            }
-          } else {
-            members.push({ id: uid(), name, email, mobile, isActive: true });
-          }
+          setButtonBusy(btn, true, 'Saving...');
+          setSyncStatus('syncing');
 
-          await persist();
-          resetM();
-          renderAll();
-          document.getElementById('mMsg').textContent = 'Member saved!';
-          setTimeout(() => { document.getElementById('mMsg').textContent = ''; }, 2500);
+          try {
+            if (editM) {
+              const { error } = await supabase.from('members').update({
+                name,
+                email: email || null,
+                mobile: mobile || null
+              }).eq('id', editM);
+
+              if (error) throw error;
+
+              const idx = members.findIndex(x => String(x.id) === String(editM));
+              if (idx !== -1) {
+                members[idx] = { ...members[idx], name, email, mobile };
+              }
+              showToast('Member updated');
+            } else {
+              const newRecord = {
+                name,
+                email: email || null,
+                mobile: mobile || null,
+                is_active: true
+              };
+
+              const { data, error } = await supabase.from('members').insert([newRecord]).select();
+              if (error) throw error;
+
+              if (data && data[0]) {
+                members.push({
+                  id: String(data[0].id),
+                  name: data[0].name,
+                  email: data[0].email || '',
+                  mobile: data[0].mobile || '',
+                  isActive: true
+                });
+                members.sort((a, b) => a.name.localeCompare(b.name));
+              }
+              showToast('Member added to group');
+            }
+
+            resetM();
+            renderAll();
+            setSyncStatus('synced');
+          } catch (err) {
+            showToast(err.message, 'error');
+            setSyncStatus('error');
+          } finally {
+            setButtonBusy(btn, false);
+          }
         };
         document.getElementById('cancelMember').onclick = resetM;
 
-        // Backup & Restore
+        // Save Payment Received
+        document.getElementById('savePayment').onclick = async () => {
+          const btn = document.getElementById('savePayment');
+          const memberId = document.getElementById('pMember').value;
+          const date = document.getElementById('pDate').value;
+          const rawAmount = document.getElementById('pAmount').value;
+          const amount = Number(rawAmount);
+          const note = document.getElementById('pNote').value.trim();
+
+          if (!memberId || !date || rawAmount === '' || !Number.isFinite(amount) || amount <= 0) {
+            showToast('Select member, date, and enter valid amount', 'error');
+            return;
+          }
+
+          setButtonBusy(btn, true, 'Recording...');
+          setSyncStatus('syncing');
+
+          try {
+            const payload = {
+              member_id: memberId,
+              date,
+              amount,
+              note: note || null
+            };
+
+            const { data, error } = await supabase.from('payments').insert([payload]).select();
+            if (error) throw error;
+
+            if (data && data[0]) {
+              payments.unshift({
+                id: String(data[0].id),
+                memberId: String(data[0].member_id),
+                date: data[0].date,
+                amount: Number(data[0].amount),
+                note: data[0].note || '',
+                createdAt: data[0].created_at || new Date().toISOString()
+              });
+            }
+
+            closePaymentModal();
+            renderSummary();
+            showToast(`Recorded ${money(amount)} from ${member(memberId)?.name}`);
+            setSyncStatus('synced');
+          } catch (err) {
+            showToast(err.message, 'error');
+            setSyncStatus('error');
+          } finally {
+            setButtonBusy(btn, false);
+          }
+        };
+
+        // Export JSON & CSV
         document.getElementById('exportJson').onclick = () => {
-          const data = JSON.stringify({ app: 'TiffinTrackerBlue', version: 4, exportedAt: new Date().toISOString(), members, tiffins }, null, 2);
+          const data = JSON.stringify({
+            app: 'TiffinTrackerBlue',
+            version: 6,
+            exportedAt: new Date().toISOString(),
+            members,
+            tiffins,
+            payments
+          }, null, 2);
           const u = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
           const a = document.createElement('a');
           a.href = u; a.download = `tiffin-backup-${today}.json`; a.click();
@@ -784,56 +1255,89 @@
         };
 
         document.getElementById('exportCsv').onclick = () => {
-          const rows = [['Date', 'Member', 'Mobile', 'Meal', 'Price']];
+          const rows = [['Type', 'Date', 'Member', 'Meal/Note', 'Amount']];
           tiffins.forEach(t => {
             const m = member(t.memberId);
-            rows.push([t.date, m?.name || t.memberName || '', m?.mobile || '', t.meal, t.price]);
+            rows.push(['Meal', t.date, m?.name || 'Deleted', t.meal, t.price]);
+          });
+          payments.forEach(p => {
+            const m = member(p.memberId);
+            rows.push(['Payment', p.date, m?.name || 'Deleted', p.note || 'Payment Received', p.amount]);
           });
           const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
           const u = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
           const a = document.createElement('a');
-          a.href = u; a.download = `tiffins-${today}.csv`; a.click();
+          a.href = u; a.download = `tiffin-statement-${today}.csv`; a.click();
           setTimeout(() => URL.revokeObjectURL(u), 1000);
         };
 
+        // Direct JSON Import
         document.getElementById('importJson').onclick = async () => {
+          const btn = document.getElementById('importJson');
           const f = document.getElementById('importFile').files[0];
-          if (!f) { alert('Choose backup file first.'); return; }
+          if (!f) { showToast('Select a JSON backup file first', 'error'); return; }
           try {
             const d = JSON.parse(await f.text());
-            if (!Array.isArray(d.members) || !Array.isArray(d.tiffins)) throw new Error('Invalid format');
-            if (!confirm('Replace current data with this backup?')) return;
-            members = d.members.map(m => ({ ...m, isActive: m.isActive !== undefined ? m.isActive : true }));
-            tiffins = d.tiffins.map(t => ({ ...t, memberId: t.memberId || members.find(m => m.name === t.memberName)?.id || '' }));
-            await persist();
-            renderAll();
-            document.getElementById('bMsg').textContent = 'Backup restored successfully!';
+            if (!Array.isArray(d.members) || !Array.isArray(d.tiffins)) throw new Error('Invalid backup file format');
+            if (!confirm('Upload all members, tiffins, and payments to Supabase?')) return;
+
+            setButtonBusy(btn, true, 'Importing...');
+            const memMap = {};
+            for (const m of d.members) {
+              const { data, error } = await supabase.from('members').insert([{
+                name: m.name,
+                mobile: m.mobile || null,
+                email: m.email || null,
+                is_active: m.isActive !== false
+              }]).select();
+
+              if (error) throw error;
+              if (data && data[0]) memMap[m.id || m.name] = data[0].id;
+            }
+
+            const tiffinPayload = d.tiffins.map(t => ({
+              date: t.date,
+              meal: t.meal,
+              price: Number(t.price),
+              member_id: memMap[t.memberId] || memMap[t.memberName]
+            })).filter(t => Boolean(t.member_id));
+
+            if (tiffinPayload.length) {
+              const { error: tErr } = await supabase.from('tiffins').insert(tiffinPayload);
+              if (tErr) throw tErr;
+            }
+
+            if (Array.isArray(d.payments)) {
+              const paymentPayload = d.payments.map(p => ({
+                date: p.date,
+                amount: Number(p.amount),
+                note: p.note || null,
+                member_id: memMap[p.memberId]
+              })).filter(p => Boolean(p.member_id));
+
+              if (paymentPayload.length) {
+                const { error: pErr } = await supabase.from('payments').insert(paymentPayload);
+                if (pErr) throw pErr;
+              }
+            }
+
+            await loadData();
+            showToast('Cloud import completed successfully');
           } catch (e) {
-            document.getElementById('bMsg').textContent = 'Failed: ' + e.message;
+            showToast(e.message, 'error');
+          } finally {
+            setButtonBusy(btn, false);
           }
         };
 
-        document.getElementById('clearAll').onclick = async () => {
-          if (!confirm('Permanent action: Delete all tiffin records and members?')) return;
-          members = []; tiffins = [];
-          await persist();
-          renderAll();
-        };
-
-        // Launch App
+        // App Initialization
         (async () => {
-          try {
-            await openDB();
-            members = (await get('members')) || [];
-            tiffins = (await get('tiffins')) || [];
-            renderAll();
-            switchTab('dailyView');
-          } catch (e) {
-            alert('Local database unavailable.');
-          }
+          await loadData();
+          setupRealtime();
+          switchTab('dailyView');
         })();
 
-        // Service Worker
+        // Service Worker for App Shell Caching
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
           window.addEventListener('load', () => {
             navigator.serviceWorker.register('./sw.js').then(reg => {
